@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>My Job Radar</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root { --blue:#1A33FF; --ink:#111827; --muted:#6b7280; --line:#e5e7eb; --bg:#fff; --soft:#f4f6ff; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:'Montserrat',system-ui,sans-serif; background:var(--bg); color:var(--ink); }
+  main { max-width:760px; margin:0 auto; padding:32px 20px 64px; }
+  .eyebrow { color:var(--blue); font-size:12px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; }
+  h1 { font-size:34px; margin:6px 0 6px; }
+  p.sub { color:var(--muted); margin:0 0 28px; }
+  label.f { display:block; font-size:13px; font-weight:600; margin:18px 0 6px; }
+  input[type=text], select { width:100%; padding:12px 14px; border:1px solid var(--line); border-radius:10px; font:inherit; background:#fff; }
+  input[type=text]:focus, select:focus { outline:2px solid var(--blue); border-color:transparent; }
+  .row { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  .sites { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:8px; }
+  .chip { display:flex; align-items:center; gap:8px; padding:10px 12px; border:1px solid var(--line); border-radius:10px; font-size:14px; cursor:pointer; user-select:none; }
+  .chip:has(input:checked) { border-color:var(--blue); background:var(--soft); }
+  .chip input { accent-color:var(--blue); }
+  .preview { margin-top:24px; padding:14px 16px; background:var(--soft); border-radius:12px; font-size:13px; word-break:break-word; }
+  .preview b { color:var(--blue); display:block; font-size:11px; letter-spacing:.1em; text-transform:uppercase; margin-bottom:6px; }
+  .actions { display:flex; gap:12px; margin-top:20px; flex-wrap:wrap; }
+  button { font:inherit; font-weight:600; padding:14px 22px; border-radius:10px; border:2px solid var(--blue); cursor:pointer; }
+  .primary { background:var(--blue); color:#fff; }
+  .secondary { background:#fff; color:var(--blue); }
+  button:hover { opacity:.9; }
+  @media (max-width:560px){ .row{grid-template-columns:1fr;} h1{font-size:28px;} button{flex:1;} }
+</style>
+</head>
+<body>
+<main>
+  <div class="eyebrow">Job search tool</div>
+  <h1>My Job Radar</h1>
+  <p class="sub">Cherche directement sur les sites carrières des entreprises, pas sur les job boards.</p>
+
+  <label class="f" for="titles">Intitulés de poste (séparés par des virgules)</label>
+  <input type="text" id="titles" value="Chef de projet digital, Digital Project Manager">
+
+  <div class="row">
+    <div>
+      <label class="f" for="location">Lieu</label>
+      <input type="text" id="location" placeholder="Lyon, Paris, Remote…">
+    </div>
+    <div>
+      <label class="f" for="posted">Publiée</label>
+      <select id="posted">
+        <option value="">À tout moment</option>
+        <option value="d">Dernières 24 h</option>
+        <option value="w">Dernière semaine</option>
+        <option value="m">Dernier mois</option>
+      </select>
+    </div>
+  </div>
+
+  <label class="f">Sites carrières</label>
+  <div class="sites" id="sites"></div>
+
+  <div class="row">
+    <div>
+      <label class="f" for="include">Mots à inclure (optionnel)</label>
+      <input type="text" id="include" placeholder="agence, WordPress, CDI">
+    </div>
+    <div>
+      <label class="f" for="exclude">Mots à exclure (optionnel)</label>
+      <input type="text" id="exclude" placeholder="stage, alternance">
+    </div>
+  </div>
+
+  <label class="f" for="engine">Moteur de recherche</label>
+  <select id="engine">
+    <option value="google">Google</option>
+    <option value="bing">Bing</option>
+    <option value="ddg">DuckDuckGo</option>
+  </select>
+
+  <div class="preview"><b>Aperçu de la requête</b><span id="preview"></span></div>
+
+  <div class="actions">
+    <button class="primary" id="find">Find jobs</button>
+    <button class="secondary" id="linkedin">Trouver l'équipe de recrutement (LinkedIn)</button>
+  </div>
+</main>
+
+<script>
+const SITES = [
+  ["Greenhouse","boards.greenhouse.io"],
+  ["Lever","jobs.lever.co"],
+  ["Ashby","jobs.ashbyhq.com"],
+  ["Workable","apply.workable.com"],
+  ["Teamtailor","teamtailor.com"],
+  ["SmartRecruiters","jobs.smartrecruiters.com"],
+  ["Workday","myworkdayjobs.com"],
+  ["Welcome to the Jungle","welcometothejungle.com"]
+];
+const $ = id => document.getElementById(id);
+const sitesEl = $("sites");
+SITES.forEach(([name,dom],i)=>{
+  const l = document.createElement("label");
+  l.className = "chip";
+  l.innerHTML = `<input type="checkbox" value="${dom}" ${i<3?"checked":""}> ${name}`;
+  sitesEl.appendChild(l);
+});
+
+const split = s => s.split(",").map(x=>x.trim()).filter(Boolean);
+const or = arr => arr.length>1 ? "(" + arr.map(x=>`"${x}"`).join(" OR ") + ")" : arr.map(x=>`"${x}"`).join("");
+
+function buildQuery(){
+  const parts = [];
+  const sites = [...sitesEl.querySelectorAll("input:checked")].map(i=>"site:"+i.value);
+  if (sites.length) parts.push(sites.length>1 ? "(" + sites.join(" OR ") + ")" : sites[0]);
+  const titles = split($("titles").value);
+  if (titles.length) parts.push(or(titles));
+  if ($("location").value.trim()) parts.push(`"${$("location").value.trim()}"`);
+  split($("include").value).forEach(w=>parts.push(`"${w}"`));
+  split($("exclude").value).forEach(w=>parts.push(`-"${w}"`));
+  return parts.join(" ");
+}
+
+function buildUrl(q){
+  const p = $("posted").value, e = $("engine").value, enc = encodeURIComponent(q);
+  if (e==="google") return `https://www.google.com/search?q=${enc}` + (p?`&tbs=qdr:${p}`:"");
+  if (e==="bing")   { const m={d:"ex1%3a%22ez1%22",w:"ex1%3a%22ez2%22",m:"ex1%3a%22ez3%22"};
+                      return `https://www.bing.com/search?q=${enc}` + (p?`&filters=${m[p]}`:""); }
+  return `https://duckduckgo.com/?q=${enc}` + (p?`&df=${p}`:"");
+}
+
+function linkedinQuery(){
+  const titles = split($("titles").value);
+  const parts = ["site:linkedin.com/in"];
+  parts.push('("recruiter" OR "talent acquisition" OR "hiring manager" OR "recruteur" OR "chargé de recrutement")');
+  if (titles.length) parts.push(or(titles));
+  if ($("location").value.trim()) parts.push(`"${$("location").value.trim()}"`);
+  return parts.join(" ");
+}
+
+function refresh(){ $("preview").textContent = buildQuery() || "—"; }
+document.querySelectorAll("input,select").forEach(el=>el.addEventListener("input",refresh));
+$("find").onclick = ()=> window.open(buildUrl(buildQuery()), "_blank", "noopener");
+$("linkedin").onclick = ()=> window.open(buildUrl(linkedinQuery()), "_blank", "noopener");
+refresh();
+</script>
+</body>
+</html>
